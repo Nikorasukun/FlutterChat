@@ -48,22 +48,72 @@ class _MyHomePageState extends State<MyHomePage> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  void _loadMessages() async {
+    final response = await rootBundle.loadString('assets/messaggi.json');
+    final messages = (jsonDecode(response) as List)
+      .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
+      .toList();
+
+    setState(() {
+      _messaggi = messages;
+    });
+  }
+
+  void _handlePreviewDataFetched(
+    types.TextMessage message,
+    types.PreviewData previewData
+  ) {
+    final index = _messaggi.indexWhere((element) => element.id == message.id);
+    final updateMessage = (_messaggi[index] as types.TextMessage).copyWith(
+      previewData: previewData,
+    );
+
+    setState(() {
+      _messaggi[index] = updateMessage;
+    });
+  }
+
+  void _handleSendPressed(types.PartialText message){
+    final textMessage = types.TextMessage(
+      author: _user,
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+      id: const Uuid().v4(),
+      text: message.text
+    );
+
+    _addMessage(textMessage);
+  }
+
+  void _addMessage(types.Message message) {
+    setState(() {
+      _messaggi.insert(0, message);
+    });
+  }
+
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: Chat(
+        messages: _messaggi,
+        onPreviewDataFetched: _handlePreviewDataFetched,
+        onSendPressed: _handleSendPressed,
+        showUserAvatars: true,
+        showUserNames: true,
+        user: _user,
+        theme: const DefaultChatTheme(
+          seenIcon: Text(
+            'read',
+            style: TextStyle(
+              fontSize: 10.0,
+            ),
+          ),
+        ),
       ),
     );
   }
