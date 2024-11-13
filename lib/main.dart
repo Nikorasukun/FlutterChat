@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
@@ -5,6 +7,9 @@ import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:uuid/uuid.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:cool_alert/cool_alert.dart';
 
 void main() {
   initializeDateFormatting().then(
@@ -53,15 +58,31 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadMessages();
   }
 
-  void _loadMessages() async {
-    final response = await rootBundle.loadString('assets/messaggi.json');
-    final messages = (jsonDecode(response) as List)
-      .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
-      .toList();
+  Future<String> _getFilePath() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/messagi.json';
+  }
 
-    setState(() {
-      _messaggi = messages;
-    });
+  void _loadMessages() async {
+    final path = await _getFilePath();
+    final file = File(path);
+    if(await file.exists()) {
+      final jsonContent = file.readAsStringSync();
+      final jsonList = (jsonDecode(jsonContent) as List).map((e) => types.Message.fromJson(e as Map<String,dynamic>)).toList();
+      setState(() {
+        _messaggi = jsonList;
+      });
+    }
+  }
+
+  void _showAlert(BuildContext context, String title, String content) {
+    CoolAlert.show(
+      context: context,
+      type: CoolAlertType.success,
+      title: title,
+      text: content,
+      loopAnimation: false,
+    );
   }
 
   void _handlePreviewDataFetched(
@@ -89,12 +110,20 @@ class _MyHomePageState extends State<MyHomePage> {
     _addMessage(textMessage);
   }
 
-  void _addMessage(types.Message message) {
+  void _addMessage(types.Message message) async {
+    final filepath = await _getFilePath();
+    final file = File(filepath);
     setState(() {
       _messaggi.insert(0, message);
     });
+    final jsonString = jsonEncode(_messaggi);
+    await file.writeAsString(jsonString);
   }
 
+  Future<File> loadFile() async {
+    final filePath = await _getFilePath();
+    return File(filePath);
+  }
 
   @override
   Widget build(BuildContext context) {
