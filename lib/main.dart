@@ -90,7 +90,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
     socket.on('message', (data) {
       //_streamController.add(data);    STREAMCONTROLLER
+      if(mounted) _showAlert(context, "Messaggio ricevuto", "Il server ti ha scritto");
 
+      final message = data;
+      final textMessage = types.TextMessage(
+        author: types.User.fromJson(message['author']),
+        id: message['id'],
+        text: message['text'],
+        createdAt: message['createdAt'],
+      );
+
+      setState(() {
+        _addMessage(textMessage);
+      });
     });
   }
 
@@ -142,6 +154,10 @@ class _MyHomePageState extends State<MyHomePage> {
       id: const Uuid().v4(),
       text: message.text
     );
+    
+    if(socket.connected){
+      socket.emit("sendMessage", message);
+    }
 
     _addMessage(textMessage);
   }
@@ -154,10 +170,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     final jsonString = jsonEncode(_messaggi);
     await file.writeAsString(jsonString);
-
-    if(socket.connected){
-      socket.emit("sendMessage", message);
-    }
   }
 
   Future<File> loadFile() async {
