@@ -49,6 +49,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _messaggi = [];
+  final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97'};
   final _user = const types.User(
     id: 'yhw34i87hy7e8rwchb8iweb9f734b97'
   );
