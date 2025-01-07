@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:cool_alert/cool_alert.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 void main() {
   initializeDateFormatting().then(
@@ -52,10 +53,45 @@ class _MyHomePageState extends State<MyHomePage> {
     id: 'yhw34i87hy7e8rwchb8iweb9f734b97'
   );
 
+
+  //
+  late IO.Socket socket;
+  //final StreamController<String> _streamController = StreamController<String>();    STREAMCONTROLLER
+  //Stream<String> get messagesStream => _streamController.stream;    STREAMCONTROLLER
+  
+  @override
+  void dispose() {
+    socket.disconnect();
+
+    //_streamController.close();  STREAMCONTROLLER
+    super.dispose();
+  }
+
+ void sendMessage(String message) {
+    socket.emit('sendMessage', message);
+  }
+  //
+
   @override
   void initState() {
     super.initState();
     _loadMessages();
+
+    
+    socket = IO.io("http://192.168.1.105:3000", <String, dynamic> {   //IP DEL SERVER
+      'transports': ['websocket',]
+    });
+
+    socket.on('connect', (_) {
+      if(mounted){
+        _showAlert(context, "Connessione", "ora sei connesso");
+      }
+    });
+
+    socket.on('message', (data) {
+      //_streamController.add(data);    STREAMCONTROLLER
+
+    });
   }
 
   Future<String> _getFilePath() async {
@@ -118,6 +154,10 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     final jsonString = jsonEncode(_messaggi);
     await file.writeAsString(jsonString);
+
+    if(socket.connected){
+      socket.emit("sendMessage", message);
+    }
   }
 
   Future<File> loadFile() async {
@@ -147,4 +187,3 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-//
