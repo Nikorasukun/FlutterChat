@@ -49,9 +49,11 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _messaggi = [];
-  final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97'};
+  final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97', 'Matteo': '4'};
   final _user = const types.User(
-    id: 'yhw34i87hy7e8rwchb8iweb9f734b97'
+    id: 'yhw34i87hy7e8rwchb8iweb9f734b97',
+    firstName: 'Nikolas',
+    lastName: 'Panterini'
   );
 
 
@@ -79,7 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadMessages();
 
     
-    socket = IO.io("http://192.168.1.105:3000", <String, dynamic> {   //IP DEL SERVER
+    socket = IO.io("http://192.168.141.102:3000", <String, dynamic> {   //IP DEL SERVER
       'transports': ['websocket',]
     });
 
@@ -90,8 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     socket.on('message', (data) {
-      //_streamController.add(data);    STREAMCONTROLLER
-      if(mounted) _showAlert(context, "Messaggio ricevuto", "Il server ti ha scritto");
+      //_streamController.add(data);    STREAMCONTROLLER      
 
       final message = data;
       final textMessage = types.TextMessage(
@@ -101,9 +102,8 @@ class _MyHomePageState extends State<MyHomePage> {
         createdAt: message['createdAt'],
       );
 
-      setState(() {
-        _addMessage(textMessage);
-      });
+      //if(_messaggi.last.id == message['id'])
+      if(!_messaggi.any((msg) => msg.id == message['id'])) _addMessage(textMessage);      
     });
   }
 
@@ -157,7 +157,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
     
     if(socket.connected){
-      socket.emit("sendMessage", message);
+      socket.emit("sendMessage", textMessage);
     }
 
     _addMessage(textMessage);
