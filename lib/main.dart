@@ -50,6 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _messaggi = [];
   final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97', 'Matteo': '4'};
+  
   final _user = const types.User(
     id: 'yhw34i87hy7e8rwchb8iweb9f734b97',
     firstName: 'Nikolas',
@@ -103,7 +104,11 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
       //if(_messaggi.last.id == message['id'])
-      if(!_messaggi.any((msg) => msg.id == message['id'])) _addMessage(textMessage);      
+      if(!_messaggi.any((msg) => msg.id == message['id'])){
+        setState(() {
+            _addMessage(textMessage);   
+        });
+      }   
     });
   }
 
