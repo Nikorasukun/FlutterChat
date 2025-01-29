@@ -61,15 +61,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     socket.disconnect();
-
-    //_streamController.close();  STREAMCONTROLLER
     super.dispose();
   }
 
  void sendMessage(String message) {
     socket.emit('sendMessage', message);
   }
-  //
+  
 
   @override
   void initState() {
@@ -87,9 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    socket.on('message', (data) {
-      //_streamController.add(data);    STREAMCONTROLLER      
-
+    socket.on('message', (data) {  
       final message = data;
       final textMessage = types.TextMessage(
         author: types.User.fromJson(message['author']),
@@ -98,7 +94,6 @@ class _MyHomePageState extends State<MyHomePage> {
         createdAt: message['createdAt'],
       );
 
-      //if(_messaggi.last.id == message['id'])
       if(!_messaggi.any((msg) => msg.id == message['id'])){
         setState(() {
             _addMessage(textMessage);   
