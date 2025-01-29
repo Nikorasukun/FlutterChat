@@ -1,5 +1,6 @@
 // ignore_for_file: unused_import
 
+//chat dependencies
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
@@ -12,7 +13,16 @@ import 'dart:io';
 import 'package:cool_alert/cool_alert.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
-void main() {
+//login dependencies
+import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   initializeDateFormatting().then(
     (_) => runApp(
       const SimpleChat(),
@@ -46,15 +56,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  String? _nomeUtente;
+  String? _email;
+  bool _logged = false;
 
   List<types.Message> _messaggi = [];
-  final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97', 'Matteo': '4'};
-  final _user = const types.User(
-    id: 'yhw34i87hy7e8rwchb8iweb9f734b97',
-    firstName: 'Nikolas',
-    lastName: 'Panterini'
-  );
-
+  dynamic _user;
 
   late IO.Socket socket;
   
@@ -73,15 +80,15 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _loadMessages();
-
+    _loggati();
     
-    socket = IO.io("http://192.168.1.105:3000", <String, dynamic> {   //IP DEL SERVER
+    socket = IO.io("http://192.168.60.102:3000", <String, dynamic> {   //IP DEL SERVER
       'transports': ['websocket',]
     });
-
+    
     socket.on('connect', (_) {
       if(mounted){
-        _showAlert(context, "Connessione", "ora sei connesso");
+        //_showAlert(context, "Connessione", "ora sei connesso");
       }
     });
 
@@ -100,6 +107,55 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     });
+  }
+
+  Future<void> _loggati() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if(googleUser == null) {
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken
+      );
+
+      UserCredential userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+
+      User? user = userCredential.user;
+      _user = null;
+      _user = types.User(id: user!.uid, firstName: user.displayName);
+      if (user != null) {
+        setState(() {
+          _logged = true;
+        });
+      }
+    } catch(e) {
+      if(mounted){
+        _showAlert(context, "Login Error", "Il login con Google ha fallito, ritenta. [[$e]]");
+      }
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      await GoogleSignIn()
+        .signOut();
+      setState(() {
+        _nomeUtente = null;
+        _email = null;
+        _logged = false;
+      });
+    } catch(e) {
+      if(mounted){
+        _showAlert(context, "Logout Error", "Si è verificato un errore con il logout, ritenta. ($e)");
+      }
+    }
   }
 
   Future<String> _getFilePath() async {
@@ -151,7 +207,16 @@ class _MyHomePageState extends State<MyHomePage> {
       text: message.text
     );
     
-    if(socket.connected && textMessage.text.startsWith("/room")) {      
+    if(textMessage.text.startsWith("/logout") && _logged) {
+      setState(() {
+        _logout();
+        _nomeUtente = '';
+        _email = '';
+      });
+    }
+    else
+    {
+      if(socket.connected && textMessage.text.startsWith("/room")) {      
       socket.emit('join-room', textMessage.text.substring(5));
     }
     else
@@ -161,6 +226,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _addMessage(textMessage);
       }
     }
+    }    
   }
 
   void _addMessage(types.Message message) async {
@@ -180,23 +246,37 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Chat(
-        messages: _messaggi,
-        onPreviewDataFetched: _handlePreviewDataFetched,
-        onSendPressed: _handleSendPressed,
-        showUserAvatars: true,
-        showUserNames: true,
-        user: _user,
-        theme: const DefaultChatTheme(
-          seenIcon: Text(
-            'read',
-            style: TextStyle(
-              fontSize: 10.0,
+    if(_logged){
+      return Scaffold(
+        body: Chat(
+          messages: _messaggi,
+          onPreviewDataFetched: _handlePreviewDataFetched,
+          onSendPressed: _handleSendPressed,
+          showUserAvatars: true,
+          showUserNames: true,
+          user: _user,
+          theme: const DefaultChatTheme(
+            seenIcon: Text(
+              'read',
+              style: TextStyle(
+                fontSize: 10.0,
+              ),
             ),
           ),
         ),
+      );
+    }
+    else{
+      return Scaffold(
+        body: Center(
+        child: Column(          
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SignInButton(Buttons.Google, onPressed: _loggati),
+          ],
+        ),
       ),
-    );
+      );
+    }    
   }
 }
