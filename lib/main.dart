@@ -23,7 +23,6 @@ void main() {
 class SimpleChat extends StatelessWidget {
   const SimpleChat({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -50,7 +49,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _messaggi = [];
   final Object _usersId = {'Nikolas':'yhw34i87hy7e8rwchb8iweb9f734b97', 'Monia':'yhw34i87hy7e8rwc4yfgweb9f734b97', 'Matteo': '4'};
-  
   final _user = const types.User(
     id: 'yhw34i87hy7e8rwchb8iweb9f734b97',
     firstName: 'Nikolas',
@@ -58,10 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
   );
 
 
-  //
   late IO.Socket socket;
-  //final StreamController<String> _streamController = StreamController<String>();    STREAMCONTROLLER
-  //Stream<String> get messagesStream => _streamController.stream;    STREAMCONTROLLER
   
   @override
   void dispose() {
@@ -82,7 +77,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadMessages();
 
     
-    socket = IO.io("http://192.168.141.102:3000", <String, dynamic> {   //IP DEL SERVER
+    socket = IO.io("http://192.168.1.105:3000", <String, dynamic> {   //IP DEL SERVER
       'transports': ['websocket',]
     });
 
@@ -108,7 +103,7 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
             _addMessage(textMessage);   
         });
-      }   
+      }
     });
   }
 
@@ -161,11 +156,16 @@ class _MyHomePageState extends State<MyHomePage> {
       text: message.text
     );
     
-    if(socket.connected){
-      socket.emit("sendMessage", textMessage);
+    if(socket.connected && textMessage.text.startsWith("/room")) {      
+      socket.emit('join-room', textMessage.text.substring(5));
     }
-
-    _addMessage(textMessage);
+    else
+    {
+      if(socket.connected){
+        socket.emit("sendMessage", textMessage);
+        _addMessage(textMessage);
+      }
+    }
   }
 
   void _addMessage(types.Message message) async {
