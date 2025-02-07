@@ -20,6 +20,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
+//stati dell'applicazione
+enum Status{
+  login,
+  inChat
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -56,9 +62,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String? _nomeUtente;
-  String? _email;
-  bool _logged = false;
+  Status appStatus = Status.login;
 
   List<types.Message> _messaggi = [];
   dynamic _user;
@@ -82,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadMessages();
     _loggati();
     
-    socket = IO.io("http://192.168.60.102:3000", <String, dynamic> {   //IP DEL SERVER
+    socket = IO.io("http://192.168.1.23:3000", <String, dynamic> {   //IP DEL SERVER
       'transports': ['websocket',]
     });
     
@@ -130,9 +134,9 @@ class _MyHomePageState extends State<MyHomePage> {
       User? user = userCredential.user;
       _user = null;
       _user = types.User(id: user!.uid, firstName: user.displayName);
-      if (user != null) {
+      if (/*user != null USELESS*/true) {
         setState(() {
-          _logged = true;
+          appStatus = Status.inChat;
         });
       }
     } catch(e) {
@@ -147,9 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
       await GoogleSignIn()
         .signOut();
       setState(() {
-        _nomeUtente = null;
-        _email = null;
-        _logged = false;
+        appStatus = Status.login;
       });
     } catch(e) {
       if(mounted){
@@ -207,25 +209,23 @@ class _MyHomePageState extends State<MyHomePage> {
       text: message.text
     );
     
-    if(textMessage.text.startsWith("/logout") && _logged) {
+    if(textMessage.text.startsWith("/logout") && appStatus == Status.inChat) {
       setState(() {
         _logout();
-        _nomeUtente = '';
-        _email = '';
       });
     }
     else
     {
       if(socket.connected && textMessage.text.startsWith("/room")) {      
       socket.emit('join-room', textMessage.text.substring(5));
-    }
-    else
-    {
-      if(socket.connected){
-        socket.emit("sendMessage", textMessage);
-        _addMessage(textMessage);
       }
-    }
+      else
+      {
+        if(socket.connected){
+          socket.emit("sendMessage", textMessage);
+          _addMessage(textMessage);
+        }
+      }
     }    
   }
 
@@ -244,11 +244,10 @@ class _MyHomePageState extends State<MyHomePage> {
     return File(filePath);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if(_logged){
-      return Scaffold(
-        body: Chat(
+  Widget _buildBody() {
+    switch(appStatus){
+      case Status.inChat:
+        return Chat(
           messages: _messaggi,
           onPreviewDataFetched: _handlePreviewDataFetched,
           onSendPressed: _handleSendPressed,
@@ -263,20 +262,24 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-        ),
-      );
-    }
-    else{
-      return Scaffold(
-        body: Center(
+        );
+      
+      case Status.login:
+        return Center(
         child: Column(          
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SignInButton(Buttons.Google, onPressed: _loggati),
           ],
         ),
-      ),
       );
-    }    
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _buildBody()
+    );
   }
 }
