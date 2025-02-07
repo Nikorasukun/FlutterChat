@@ -21,10 +21,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
 //stati dell'applicazione
-enum Status{
-  login,
-  inChat
-}
+enum Status { login, inChat, ipAssigning }
 
 //il main dell'applicazione
 void main() async {
@@ -32,13 +29,11 @@ void main() async {
 
   //con questo comando si inizializza firebase per la connessione con google
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+
   //fatto per le date e i caratteri strani, non implementato
-  initializeDateFormatting().then(
-    (_) => runApp(
-      const SimpleChat(),
-    )
-  );
+  initializeDateFormatting().then((_) => runApp(
+        const SimpleChat(),
+      ));
 }
 
 //è qui perché sì, Flutter lo vuole
@@ -61,7 +56,7 @@ class SimpleChat extends StatelessWidget {
 //è qui perché sì, Flutter lo vuole
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-  
+
   final String title;
 
   @override
@@ -71,7 +66,11 @@ class MyHomePage extends StatefulWidget {
 //vera e propria application
 class _MyHomePageState extends State<MyHomePage> {
   //enum che decreterà dinamicamente lo stato della mia applicazione
-  Status appStatus = Status.login;
+  Status appStatus = Status.ipAssigning;
+
+  //l'ip del server
+  TextEditingController txtController = TextEditingController();
+  late String serverIp;
 
   //lista messaggi di appoggio json
   List<types.Message> _messaggi = [];
@@ -81,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //dichiarazione ritardata del socket
   late IO.Socket socket;
-  
+
   //override del dispose per far sì che non resti aperto il socket post chiusura app
   @override
   void dispose() {
@@ -93,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void sendMessage(String message) {
     socket.emit('sendMessage', message);
   }
-  
+
   //override initState, metodo che parte a inizio app, veramente importante
   @override
   void initState() {
@@ -102,39 +101,12 @@ class _MyHomePageState extends State<MyHomePage> {
     //metodo per caricare i messaggi da json
     _loadMessages();
 
-    //metodo per far partire il login, async
-    _loggati();
-    
     //creazione socket con ip del server, da automatizzare
-    socket = IO.io("http://192.168.1.23:3000", <String, dynamic> {   //IP DEL SERVER
-      'transports': ['websocket',]
-    });
-    
-    //ciò che appare quando ti connetti, ora inutilizzato
-    socket.on('connect', (_) {
-      //if(mounted){
-        //_showAlert(context, "Connessione", "ora sei connesso");
-      //}
-    });
-
-    //metodo che si attiva quando il client percepisce emit dal server
-    socket.on('message', (data) { 
-      //creazione messaggio fittizio, dava errore se tenevo lo stesso
-      final message = data;
-      final textMessage = types.TextMessage(
-        author: types.User.fromJson(message['author']),
-        id: message['id'],
-        text: message['text'],
-        createdAt: message['createdAt'],
-      );
-
-      //controllo per non impostare nella chat anche i messaggi che io stesso ho spedito
-      if(!_messaggi.any((msg) => msg.id == message['id'])){
-        setState(() {
-            //metodo che effettivamente inserirà il messaggio nel json 
-            _addMessage(textMessage);   
-        });
-      }
+    socket = IO.io("http://0.0.0.0:3000", <String, dynamic>{
+      //IP DEL SERVER
+      'transports': [
+        'websocket',
+      ]
     });
   }
 
@@ -142,34 +114,33 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _loggati() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if(googleUser == null) {
+      if (googleUser == null) {
         return;
       }
 
       final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+          await googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken
-      );
+          accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
 
       UserCredential userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
       User? user = userCredential.user;
       _user = null;
       _user = types.User(id: user!.uid, firstName: user.displayName);
-      if (/*user != null USELESS*/true) {
+      if (/*user != null USELESS*/ true) {
         setState(() {
           //cambio lo status dell'app, esco da login
           appStatus = Status.inChat;
         });
       }
-    } catch(e) {
-      if(mounted){
+    } catch (e) {
+      if (mounted) {
         //ipotetico errore
-        _showAlert(context, "Login Error", "Il login con Google ha fallito, ritenta. [[$e]]");
+        _showAlert(context, "Login Error",
+            "Il login con Google ha fallito, ritenta. [[$e]]");
       }
     }
   }
@@ -177,16 +148,16 @@ class _MyHomePageState extends State<MyHomePage> {
   //implementazione forma di logout dall'account
   Future<void> _logout() async {
     try {
-      await GoogleSignIn()
-        .signOut();
+      await GoogleSignIn().signOut();
       setState(() {
         //nel caso vada a buon fine, torno a login
         appStatus = Status.login;
       });
-    } catch(e) {
-      if(mounted){
+    } catch (e) {
+      if (mounted) {
         //ipotetico errore
-        _showAlert(context, "Logout Error", "Si è verificato un errore con il logout, ritenta. ($e)");
+        _showAlert(context, "Logout Error",
+            "Si è verificato un errore con il logout, ritenta. ($e)");
       }
     }
   }
@@ -201,9 +172,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void _loadMessages() async {
     final path = await _getFilePath();
     final file = File(path);
-    if(await file.exists()) {
+    if (await file.exists()) {
       final jsonContent = file.readAsStringSync();
-      final jsonList = (jsonDecode(jsonContent) as List).map((e) => types.Message.fromJson(e as Map<String,dynamic>)).toList();
+      final jsonList = (jsonDecode(jsonContent) as List)
+          .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
+          .toList();
       setState(() {
         _messaggi = jsonList;
       });
@@ -223,9 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //metodo tutto copiato da Veneti, non so propriamente cosa faccia
   void _handlePreviewDataFetched(
-    types.TextMessage message,
-    types.PreviewData previewData
-  ) {
+    types.TextMessage message, types.PreviewData previewData) {
     final index = _messaggi.indexWhere((element) => element.id == message.id);
     final updateMessage = (_messaggi[index] as types.TextMessage).copyWith(
       previewData: previewData,
@@ -237,36 +208,56 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   //si triggera quando clicchi il tasto per spedire il messaggio
-  void _handleSendPressed(types.PartialText message){
+  void _handleSendPressed(types.PartialText message) {
     final textMessage = types.TextMessage(
-      author: _user,
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-      id: const Uuid().v4(),  //id univoco per ogni messaggio
-      text: message.text
-    );
-    
+        author: _user,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+        id: const Uuid().v4(), //id univoco per ogni messaggio
+        text: message.text);
+
     //funzionalità di logout tramite comando
-    if(textMessage.text.startsWith("/logout") && appStatus == Status.inChat) {
-      setState(() {
-        //chiama semplicemente il metodo descritto in precedenza
-        _logout();
-      });
+    if (textMessage.text.startsWith("/") /*&& appStatus == Status.inChat*/) {
+      _commands(textMessage.text.substring(1).split(' ')[0], 
+                textMessage.text.substring(1,5) == "room" ?
+                textMessage.text.substring(1).split(' ')[1] : "");
     }
-    else
-    {
-      //metodo per rooms, da rivedere fanno schifo, TODO
-      if(socket.connected && textMessage.text.startsWith("/room")) {      
-        socket.emit('join-room', textMessage.text.substring(5));
+    else {
+      if (socket.connected) {
+        //normale emissione di messaggio
+        socket.emit("sendMessage", textMessage);
+        _addMessage(textMessage);
       }
-      else
-      {
-        if(socket.connected){
-          //normale emissione di messaggio
-          socket.emit("sendMessage", textMessage);
-          _addMessage(textMessage);
-        }
-      }
-    }    
+    }
+  }
+
+  void _commands(command, params) {
+    switch (command) {
+      case "logout":
+        setState(() {
+          //chiama semplicemente il metodo descritto in precedenza
+          _logout();
+        });
+        break;
+
+      case "ipassign":
+        setState(() {
+          appStatus = Status.ipAssigning;
+          txtController.text = "";
+        });
+        break;
+
+      case "room":
+        socket.emit('join-room', params);
+        break;
+
+      case "help":
+        _showAlert(context, "command list:", "command: logout\nparams: none\ndescription: returns to the login screen.\n\ncommand: ipassign\nparams: none\ndescription: returns to the ip assigning screen.\n\ncommand: room\nparams: roomName\ndescription: it makes you connect to a specified room.");
+        break;
+
+      default:
+        _showAlert(context, "command not recognized", 'Command: $command, Params: $params');
+        break;
+    }
   }
 
   //aggiunta di messaggi all'interno del json + ricarica chat
@@ -286,9 +277,70 @@ class _MyHomePageState extends State<MyHomePage> {
     return File(filePath);
   }
 
+  //metodo per l'assegnazione dinamica dell'ip server
+  void _ipAssign() {
+    serverIp = txtController.text;
+    socket = IO.io('http://$serverIp:3000', <String, dynamic>{
+      'transports': [
+        'websocket',
+      ]
+    });
+
+    socket.on('connect', (_) {
+      setState(() {
+        if (mounted) {
+          _showAlert(context, "Connessione", "ora sei connesso");
+        }
+      });
+    });
+
+    socket.on('message', (data) {
+      setState(() {
+        //creazione messaggio fittizio, dava errore se tenevo lo stesso
+        final message = data;
+        final textMessage = types.TextMessage(
+          author: types.User.fromJson(message['author']),
+          id: message['id'],
+          text: message['text'],
+          createdAt: message['createdAt'],
+        );
+
+        //controllo per non impostare nella chat anche i messaggi che io stesso ho spedito
+        if (!_messaggi.any((msg) => msg.id == message['id'])) {
+          setState(() {
+            //metodo che effettivamente inserirà il messaggio nel json
+            _addMessage(textMessage);
+          });
+        }
+      });
+    });
+
+    _loggati();
+  }
+
   //metodo per la creazione dinamica del body in base allo stato
   Widget _buildBody() {
-    switch(appStatus){
+    switch (appStatus) {
+      //per settare l'ip iniziale
+      case Status.ipAssigning:
+        return Center(
+            child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(width: 225, height: 75, child: TextField(controller: txtController, onEditingComplete: _ipAssign))
+          ],
+        ));
+
+      //se non loggato ancora
+      case Status.login:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SignInButton(Buttons.Google, onPressed: _loggati),
+            ],
+          ),
+        );
 
       //se superato il login
       case Status.inChat:
@@ -308,25 +360,12 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         );
-      
-      //se non loggato ancora
-      case Status.login:
-        return Center(
-        child: Column(          
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SignInButton(Buttons.Google, onPressed: _loggati),
-          ],
-        ),
-      );
     }
   }
 
   //effettiva app, piccola perché il body è nel metodo
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildBody()
-    );
+    return Scaffold(body: _buildBody());
   }
 }
