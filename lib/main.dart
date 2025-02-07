@@ -26,9 +26,14 @@ enum Status{
   inChat
 }
 
+//il main dell'applicazione
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  //con questo comando si inizializza firebase per la connessione con google
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  //fatto per le date e i caratteri strani, non implementato
   initializeDateFormatting().then(
     (_) => runApp(
       const SimpleChat(),
@@ -36,6 +41,7 @@ void main() async {
   );
 }
 
+//è qui perché sì, Flutter lo vuole
 class SimpleChat extends StatelessWidget {
   const SimpleChat({super.key});
 
@@ -52,6 +58,7 @@ class SimpleChat extends StatelessWidget {
   }
 }
 
+//è qui perché sì, Flutter lo vuole
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
   
@@ -61,42 +68,58 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+//vera e propria application
 class _MyHomePageState extends State<MyHomePage> {
+  //enum che decreterà dinamicamente lo stato della mia applicazione
   Status appStatus = Status.login;
 
+  //lista messaggi di appoggio json
   List<types.Message> _messaggi = [];
+
+  //lo user identificativo, sarà in ogni messaggio
   dynamic _user;
 
+  //dichiarazione ritardata del socket
   late IO.Socket socket;
   
+  //override del dispose per far sì che non resti aperto il socket post chiusura app
   @override
   void dispose() {
-    socket.disconnect();
     super.dispose();
+    socket.disconnect();
   }
 
- void sendMessage(String message) {
+  //emit per far partire il messaggio verso il server
+  void sendMessage(String message) {
     socket.emit('sendMessage', message);
   }
   
-
+  //override initState, metodo che parte a inizio app, veramente importante
   @override
   void initState() {
     super.initState();
+
+    //metodo per caricare i messaggi da json
     _loadMessages();
+
+    //metodo per far partire il login, async
     _loggati();
     
+    //creazione socket con ip del server, da automatizzare
     socket = IO.io("http://192.168.1.23:3000", <String, dynamic> {   //IP DEL SERVER
       'transports': ['websocket',]
     });
     
+    //ciò che appare quando ti connetti, ora inutilizzato
     socket.on('connect', (_) {
-      if(mounted){
+      //if(mounted){
         //_showAlert(context, "Connessione", "ora sei connesso");
-      }
+      //}
     });
 
-    socket.on('message', (data) {  
+    //metodo che si attiva quando il client percepisce emit dal server
+    socket.on('message', (data) { 
+      //creazione messaggio fittizio, dava errore se tenevo lo stesso
       final message = data;
       final textMessage = types.TextMessage(
         author: types.User.fromJson(message['author']),
@@ -105,14 +128,17 @@ class _MyHomePageState extends State<MyHomePage> {
         createdAt: message['createdAt'],
       );
 
+      //controllo per non impostare nella chat anche i messaggi che io stesso ho spedito
       if(!_messaggi.any((msg) => msg.id == message['id'])){
         setState(() {
+            //metodo che effettivamente inserirà il messaggio nel json 
             _addMessage(textMessage);   
         });
       }
     });
   }
 
+  //metodo copia incollato da veneti per login google
   Future<void> _loggati() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -136,35 +162,42 @@ class _MyHomePageState extends State<MyHomePage> {
       _user = types.User(id: user!.uid, firstName: user.displayName);
       if (/*user != null USELESS*/true) {
         setState(() {
+          //cambio lo status dell'app, esco da login
           appStatus = Status.inChat;
         });
       }
     } catch(e) {
       if(mounted){
+        //ipotetico errore
         _showAlert(context, "Login Error", "Il login con Google ha fallito, ritenta. [[$e]]");
       }
     }
   }
 
+  //implementazione forma di logout dall'account
   Future<void> _logout() async {
     try {
       await GoogleSignIn()
         .signOut();
       setState(() {
+        //nel caso vada a buon fine, torno a login
         appStatus = Status.login;
       });
     } catch(e) {
       if(mounted){
+        //ipotetico errore
         _showAlert(context, "Logout Error", "Si è verificato un errore con il logout, ritenta. ($e)");
       }
     }
   }
 
+  //ottenere la directory per file json
   Future<String> _getFilePath() async {
     final directory = await getApplicationDocumentsDirectory();
     return '${directory.path}/messagi.json';
   }
 
+  //carico i messaggi da json a cgat
   void _loadMessages() async {
     final path = await _getFilePath();
     final file = File(path);
@@ -177,6 +210,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  //metodo per mostrare alert
   void _showAlert(BuildContext context, String title, String content) {
     CoolAlert.show(
       context: context,
@@ -187,6 +221,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  //metodo tutto copiato da Veneti, non so propriamente cosa faccia
   void _handlePreviewDataFetched(
     types.TextMessage message,
     types.PreviewData previewData
@@ -201,27 +236,32 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  //si triggera quando clicchi il tasto per spedire il messaggio
   void _handleSendPressed(types.PartialText message){
     final textMessage = types.TextMessage(
       author: _user,
       createdAt: DateTime.now().millisecondsSinceEpoch,
-      id: const Uuid().v4(),
+      id: const Uuid().v4(),  //id univoco per ogni messaggio
       text: message.text
     );
     
+    //funzionalità di logout tramite comando
     if(textMessage.text.startsWith("/logout") && appStatus == Status.inChat) {
       setState(() {
+        //chiama semplicemente il metodo descritto in precedenza
         _logout();
       });
     }
     else
     {
+      //metodo per rooms, da rivedere fanno schifo, TODO
       if(socket.connected && textMessage.text.startsWith("/room")) {      
-      socket.emit('join-room', textMessage.text.substring(5));
+        socket.emit('join-room', textMessage.text.substring(5));
       }
       else
       {
         if(socket.connected){
+          //normale emissione di messaggio
           socket.emit("sendMessage", textMessage);
           _addMessage(textMessage);
         }
@@ -229,6 +269,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }    
   }
 
+  //aggiunta di messaggi all'interno del json + ricarica chat
   void _addMessage(types.Message message) async {
     final filepath = await _getFilePath();
     final file = File(filepath);
@@ -239,13 +280,17 @@ class _MyHomePageState extends State<MyHomePage> {
     await file.writeAsString(jsonString);
   }
 
+  //autoesplicativo
   Future<File> loadFile() async {
     final filePath = await _getFilePath();
     return File(filePath);
   }
 
+  //metodo per la creazione dinamica del body in base allo stato
   Widget _buildBody() {
     switch(appStatus){
+
+      //se superato il login
       case Status.inChat:
         return Chat(
           messages: _messaggi,
@@ -264,6 +309,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         );
       
+      //se non loggato ancora
       case Status.login:
         return Center(
         child: Column(          
@@ -276,6 +322,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  //effettiva app, piccola perché il body è nel metodo
   @override
   Widget build(BuildContext context) {
     return Scaffold(
