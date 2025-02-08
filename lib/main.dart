@@ -48,7 +48,7 @@ class SimpleChat extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'chat'),
+      home: const MyHomePage(title: 'NM Chat'),
     );
   }
 }
@@ -366,6 +366,36 @@ class _MyHomePageState extends State<MyHomePage> {
   //effettiva app, piccola perché il body è nel metodo
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: _buildBody());
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: _buildBody(),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            ListTile(
+              title: const Text('Back to login'),
+              onTap: () {
+                setState(() {if(appStatus == Status.inChat) {_logout();};});
+              },
+            ),
+            ListTile(
+              title: const Text('Back to ip assigning'),
+              onTap: () {
+                setState(() {if(appStatus == Status.login || appStatus == Status.inChat) {appStatus = Status.ipAssigning; txtController.text = "";}});
+              },
+            ),
+            ListTile(
+              title: const Text('help'),
+              onTap: () {
+                setState(() {_showAlert(context, "How does it work?", "To use the <Back to Login> button you need to have assigned an ip.\n\nTo use the <Back to ip assigning> button you can be wherever you want.\n\nTo use the <help> button... you just used it..");});
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
