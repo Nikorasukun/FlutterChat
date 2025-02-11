@@ -378,7 +378,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ListTile(
               title: const Text('Back to login'),
               onTap: () {
-                setState(() {if(appStatus == Status.inChat) {_logout();};});
+                setState(() {if(appStatus == Status.inChat) {_logout();}});
               },
             ),
             ListTile(
