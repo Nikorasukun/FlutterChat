@@ -21,7 +21,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
 //stati dell'applicazione
-enum Status { login, inChat, ipAssigning }
+enum Status { ipAssigning, login, menu, inChat }
 
 //il main dell'applicazione
 void main() async {
@@ -71,6 +71,9 @@ class _MyHomePageState extends State<MyHomePage> {
   //l'ip del server
   TextEditingController txtController = TextEditingController();
   late String serverIp;
+
+  //lista di autori totali, da togliere una volta fatto fetch google TODO
+  List<types.User> authors = [];
 
   //lista messaggi di appoggio json
   List<types.Message> _messaggi = [];
@@ -133,7 +136,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (/*user != null USELESS*/ true) {
         setState(() {
           //cambio lo status dell'app, esco da login
-          appStatus = Status.inChat;
+          appStatus = Status.menu;
         });
       }
     } catch (e) {
@@ -196,7 +199,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //metodo tutto copiato da Veneti, non so propriamente cosa faccia
   void _handlePreviewDataFetched(
-    types.TextMessage message, types.PreviewData previewData) {
+      types.TextMessage message, types.PreviewData previewData) {
     final index = _messaggi.indexWhere((element) => element.id == message.id);
     final updateMessage = (_messaggi[index] as types.TextMessage).copyWith(
       previewData: previewData,
@@ -217,11 +220,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     //funzionalità di logout tramite comando
     if (textMessage.text.startsWith("/") /*&& appStatus == Status.inChat*/) {
-      _commands(textMessage.text.substring(1).split(' ')[0], 
-                textMessage.text.substring(1,5) == "room" ?
-                textMessage.text.substring(1).split(' ')[1] : "");
-    }
-    else {
+      _commands(
+          textMessage.text.substring(1).split(' ')[0],
+          textMessage.text.substring(1, 5) == "room"
+              ? textMessage.text.substring(1).split(' ')[1]
+              : "");
+    } else {
       if (socket.connected) {
         //normale emissione di messaggio
         socket.emit("sendMessage", textMessage);
@@ -251,11 +255,13 @@ class _MyHomePageState extends State<MyHomePage> {
         break;
 
       case "help":
-        _showAlert(context, "command list:", "command: logout\nparams: none\ndescription: returns to the login screen.\n\ncommand: ipassign\nparams: none\ndescription: returns to the ip assigning screen.\n\ncommand: room\nparams: roomName\ndescription: it makes you connect to a specified room.");
+        _showAlert(context, "command list:",
+            "command: logout\nparams: none\ndescription: returns to the login screen.\n\ncommand: ipassign\nparams: none\ndescription: returns to the ip assigning screen.\n\ncommand: room\nparams: roomName\ndescription: it makes you connect to a specified room.");
         break;
 
       default:
-        _showAlert(context, "command not recognized", 'Command: $command, Params: $params');
+        _showAlert(context, "command not recognized",
+            'Command: $command, Params: $params');
         break;
     }
   }
@@ -327,7 +333,11 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(width: 225, height: 75, child: TextField(controller: txtController, onEditingComplete: _ipAssign))
+            SizedBox(
+                width: 225,
+                height: 75,
+                child: TextField(
+                    controller: txtController, onEditingComplete: _ipAssign))
           ],
         ));
 
@@ -340,6 +350,24 @@ class _MyHomePageState extends State<MyHomePage> {
               SignInButton(Buttons.Google, onPressed: _loggati),
             ],
           ),
+        );
+
+      //caso del menu
+      case Status.menu:
+        populateAuthors();
+        return ListView.builder(
+          itemCount: authors.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              leading: Icon(Icons.person),
+              title: Text(authors[index].firstName!),
+              onTap: () => {
+                setState(() {
+                  appStatus = Status.inChat;
+                })
+              },
+            );
+          },
         );
 
       //se superato il login
@@ -363,6 +391,15 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void populateAuthors() {
+    for (int i = 0; i < _messaggi.length; i++) {
+      if (!authors
+          .any((currentUser) => _messaggi[i].author.id == currentUser.id)) {
+        authors.add(_messaggi[i].author);
+      }
+    }
+  }
+
   //effettiva app, piccola perché il body è nel metodo
   @override
   Widget build(BuildContext context) {
@@ -378,19 +415,31 @@ class _MyHomePageState extends State<MyHomePage> {
             ListTile(
               title: const Text('Back to login'),
               onTap: () {
-                setState(() {if(appStatus == Status.inChat) {_logout();}});
+                setState(() {
+                  if (appStatus == Status.inChat) {
+                    _logout();
+                  }
+                });
               },
             ),
             ListTile(
               title: const Text('Back to ip assigning'),
               onTap: () {
-                setState(() {if(appStatus == Status.login || appStatus == Status.inChat) {appStatus = Status.ipAssigning; txtController.text = "";}});
+                setState(() {
+                  if (appStatus == Status.login || appStatus == Status.inChat) {
+                    appStatus = Status.ipAssigning;
+                    txtController.text = "";
+                  }
+                });
               },
             ),
             ListTile(
               title: const Text('help'),
               onTap: () {
-                setState(() {_showAlert(context, "How does it work?", "To use the <Back to Login> button you need to have assigned an ip.\n\nTo use the <Back to ip assigning> button you can be wherever you want.\n\nTo use the <help> button... you just used it..");});
+                setState(() {
+                  _showAlert(context, "How does it work?",
+                      "To use the <Back to Login> button you need to have assigned an ip.\n\nTo use the <Back to ip assigning> button you can be wherever you want.\n\nTo use the <help> button... you just used it..");
+                });
               },
             ),
           ],
