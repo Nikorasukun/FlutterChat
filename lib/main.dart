@@ -400,16 +400,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  //effettiva app, piccola perché il body è nel metodo
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: _buildBody(),
-      drawer: Drawer(
+  Drawer _buildDrawer() {
+    return Drawer(
         child: ListView(
           children: [
             ListTile(
@@ -444,7 +436,23 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ],
         ),
-      ),
+      );
+  }
+
+  PreferredSizeWidget? _buildAppBar() {
+    return AppBar(
+        title: Text(widget.title),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      );
+  }
+
+  //effettiva app, piccola perché il body è nel metodo
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: _buildBody(),
+      drawer: _buildDrawer(),
     );
   }
 }
