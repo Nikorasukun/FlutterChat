@@ -1,4 +1,3 @@
-
 // ignore_for_file: unused_import
 
 //chat dependencies
@@ -80,7 +79,10 @@ class _MyHomePageState extends State<MyHomePage> {
   List<types.Message> _messaggi = [];
 
   //lo user identificativo, sarà in ogni messaggio
-  dynamic _user;
+  late types.User _user;
+
+  //id utente con cui sono in chat
+  String idUserInChat = '';
 
   //dichiarazione ritardata del socket
   late IO.Socket socket;
@@ -132,7 +134,6 @@ class _MyHomePageState extends State<MyHomePage> {
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       User? user = userCredential.user;
-      _user = null;
       _user = types.User(id: user!.uid, firstName: user.displayName);
       if (/*user != null USELESS*/ true) {
         setState(() {
@@ -172,7 +173,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return '${directory.path}/messagi.json';
   }
 
-  //carico i messaggi da json a cgat
+  //carico i messaggi da json a chat
   void _loadMessages() async {
     final path = await _getFilePath();
     final file = File(path);
@@ -181,6 +182,10 @@ class _MyHomePageState extends State<MyHomePage> {
       final jsonList = (jsonDecode(jsonContent) as List)
           .map((e) => types.Message.fromJson(e as Map<String, dynamic>))
           .toList();
+      //jsonList.map((messaggio) => {
+      //      if (messaggio.author.id != idUserInChat)
+      //        {jsonList.remove(messaggio)}
+      //    });
       setState(() {
         _messaggi = jsonList;
       });
@@ -217,7 +222,8 @@ class _MyHomePageState extends State<MyHomePage> {
         author: _user,
         createdAt: DateTime.now().millisecondsSinceEpoch,
         id: const Uuid().v4(), //id univoco per ogni messaggio
-        text: message.text);
+        text: message.text,
+        roomId: _user.id);
 
     //funzionalità di logout tramite comando
     if (textMessage.text.startsWith("/") /*&& appStatus == Status.inChat*/) {
@@ -296,14 +302,16 @@ class _MyHomePageState extends State<MyHomePage> {
     socket.on('connect', (_) {
       setState(() {
         if (mounted) {
-          _showAlert(context, "Connessione", "ora sei connesso");
+          //_showAlert(context, "Connessione", "ora sei connesso");
         }
       });
     });
 
-    socket.on('users', (data) => {
-      authors = data,
-    });
+    socket.on(
+        'users',
+        (data) => {
+              authors = data,
+            });
 
     socket.on('message', (data) {
       setState(() {
@@ -363,15 +371,20 @@ class _MyHomePageState extends State<MyHomePage> {
         return ListView.builder(
           itemCount: authors.length,
           itemBuilder: (context, index) {
-            return ListTile(
-              leading: CircleAvatar(foregroundImage: NetworkImage(authors[index]['photoURL'])),
-              title: Text(authors[index]['displayName']),
-              onTap: () => {
-                setState(() {
-                  appStatus = Status.inChat;
-                })
-              },
-            );
+            if (authors[index]['uid'] != _user.id) {
+              return ListTile(
+                leading: CircleAvatar(
+                    foregroundImage: NetworkImage(authors[index]['photoURL'])),
+                title: Text(authors[index]['displayName']),
+                onTap: () => {
+                  setState(() {
+                    idUserInChat = authors[index]['uid'];
+                    //_loadMessages();
+                    appStatus = Status.inChat;
+                  })
+                },
+              );
+            }
           },
         );
 
@@ -409,54 +422,54 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Drawer _buildDrawer() {
     return Drawer(
-        child: ListView(
-          children: [
-            ListTile(
-              title: const Text('Back to login'),
-              onTap: () {
-                setState(() {
-                  if (appStatus == Status.inChat) {
-                    _logout();
-                  }
-                });
-              },
-            ),
-            ListTile(
-              title: const Text('List all users'),
-              onTap: () {
-                socket.emit('list-users', {});
-              },
-            ),
-            ListTile(
-              title: const Text('Back to ip assigning'),
-              onTap: () {
-                setState(() {
-                  if (appStatus == Status.login || appStatus == Status.inChat) {
-                    appStatus = Status.ipAssigning;
-                    txtController.text = "";
-                  }
-                });
-              },
-            ),
-            ListTile(
-              title: const Text('help'),
-              onTap: () {
-                setState(() {
-                  _showAlert(context, "How does it work?",
-                      "To use the <Back to Login> button you need to have assigned an ip.\n\nTo use the <Back to ip assigning> button you can be wherever you want.\n\nTo use the <help> button... you just used it..");
-                });
-              },
-            ),
-          ],
-        ),
-      );
+      child: ListView(
+        children: [
+          ListTile(
+            title: const Text('Back to login'),
+            onTap: () {
+              setState(() {
+                if (appStatus == Status.inChat) {
+                  _logout();
+                }
+              });
+            },
+          ),
+          ListTile(
+            title: const Text('List all users'),
+            onTap: () {
+              socket.emit('list-users', {});
+            },
+          ),
+          ListTile(
+            title: const Text('Back to ip assigning'),
+            onTap: () {
+              setState(() {
+                if (appStatus == Status.login || appStatus == Status.inChat) {
+                  appStatus = Status.ipAssigning;
+                  txtController.text = "";
+                }
+              });
+            },
+          ),
+          ListTile(
+            title: const Text('help'),
+            onTap: () {
+              setState(() {
+                _showAlert(context, "How does it work?",
+                    "To use the <Back to Login> button you need to have assigned an ip.\n\nTo use the <Back to ip assigning> button you can be wherever you want.\n\nTo use the <help> button... you just used it..");
+              });
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   PreferredSizeWidget? _buildAppBar() {
     return AppBar(
-        title: Text(widget.title),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      );
+      title: Text(widget.title),
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+    );
   }
 
   //effettiva app, piccola perché il body è nel metodo
