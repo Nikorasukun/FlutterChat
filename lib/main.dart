@@ -302,7 +302,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     socket.on('users', (data) => {
-      authors = data
+      authors = data,
     });
 
     socket.on('message', (data) {
@@ -360,12 +360,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
       //caso del menu
       case Status.menu:
-        //populateAuthors();
         return ListView.builder(
           itemCount: authors.length,
           itemBuilder: (context, index) {
             return ListTile(
-              leading: Icon(Icons.person),
+              leading: CircleAvatar(foregroundImage: NetworkImage(authors[index]['photoURL'])),
               title: Text(authors[index]['displayName']),
               onTap: () => {
                 setState(() {
