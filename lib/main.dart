@@ -74,7 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late String serverIp;
 
   //lista di autori totali, da togliere una volta fatto fetch google TODO
-  List<types.User> authors = [];
+  List<dynamic> authors = [];
 
   //lista messaggi di appoggio json
   List<types.Message> _messaggi = [];
@@ -301,6 +301,10 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
 
+    socket.on('users', (data) => {
+      authors = data
+    });
+
     socket.on('message', (data) {
       setState(() {
         //creazione messaggio fittizio, dava errore se tenevo lo stesso
@@ -322,6 +326,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
 
+    socket.emit('list-users');
     _loggati();
   }
 
@@ -355,13 +360,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
       //caso del menu
       case Status.menu:
-        populateAuthors();
+        //populateAuthors();
         return ListView.builder(
           itemCount: authors.length,
           itemBuilder: (context, index) {
             return ListTile(
               leading: Icon(Icons.person),
-              title: Text(authors[index].firstName!),
+              title: Text(authors[index]['displayName']),
               onTap: () => {
                 setState(() {
                   appStatus = Status.inChat;
@@ -392,6 +397,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+/*
   void populateAuthors() {
     for (int i = 0; i < _messaggi.length; i++) {
       if (!authors
@@ -400,6 +406,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
   }
+*/
 
   Drawer _buildDrawer() {
     return Drawer(
@@ -413,6 +420,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     _logout();
                   }
                 });
+              },
+            ),
+            ListTile(
+              title: const Text('List all users'),
+              onTap: () {
+                socket.emit('list-users', {});
               },
             ),
             ListTile(
