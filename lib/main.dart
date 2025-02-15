@@ -382,6 +382,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 leading: CircleAvatar(
                     foregroundImage: NetworkImage(authors[index]['photoURL'])),
                 title: Text(authors[index]['displayName']),
+                subtitle: Text((_messaggi.where((message) {
+                  return message.author.id == authors[index]['uid'];
+                }).last as types.TextMessage).text),
                 onTap: () => {
                   setState(() {
                     idUserInChat = authors[index]['uid'];
