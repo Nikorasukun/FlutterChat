@@ -192,6 +192,12 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  List<types.Message> _loadMessagesDynamic() {
+    return _messaggi.where((message) {
+      return message.author.id == idUserInChat || (message.roomId == idUserInChat && message.author.id == _user.id);
+    }).toList();
+  }
+
   //metodo per mostrare alert
   void _showAlert(BuildContext context, String title, String content) {
     CoolAlert.show(
@@ -223,7 +229,7 @@ class _MyHomePageState extends State<MyHomePage> {
         createdAt: DateTime.now().millisecondsSinceEpoch,
         id: const Uuid().v4(), //id univoco per ogni messaggio
         text: message.text,
-        roomId: _user.id);
+        roomId: idUserInChat);
 
     //funzionalità di logout tramite comando
     if (textMessage.text.startsWith("/") /*&& appStatus == Status.inChat*/) {
@@ -303,7 +309,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         if (mounted) {
           //_showAlert(context, "Connessione", "ora sei connesso");
-        }
+        } 
       });
     });
 
@@ -379,7 +385,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onTap: () => {
                   setState(() {
                     idUserInChat = authors[index]['uid'];
-                    //_loadMessages();
+                    //_loadMessagesDynamic();
                     appStatus = Status.inChat;
                   })
                 },
@@ -391,7 +397,7 @@ class _MyHomePageState extends State<MyHomePage> {
       //se superato il login
       case Status.inChat:
         return Chat(
-          messages: _messaggi,
+          messages: _loadMessagesDynamic(),
           onPreviewDataFetched: _handlePreviewDataFetched,
           onSendPressed: _handleSendPressed,
           showUserAvatars: true,
@@ -447,6 +453,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (appStatus == Status.login || appStatus == Status.inChat) {
                   appStatus = Status.ipAssigning;
                   txtController.text = "";
+                }
+              });
+            },
+          ),
+          ListTile(
+            title: const Text('Back to menu'),
+            onTap: () {
+              setState(() {
+                if (appStatus == Status.inChat) {
+                  appStatus = Status.menu;
                 }
               });
             },
