@@ -194,7 +194,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _loadMessagesDynamic() {
     return _messaggi.where((message) {
-      return message.author.id == idUserInChat || (message.roomId == idUserInChat && message.author.id == _user.id);
+      return message.author.id == idUserInChat ||
+          (message.roomId == idUserInChat && message.author.id == _user.id);
     }).toList();
   }
 
@@ -309,7 +310,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         if (mounted) {
           //_showAlert(context, "Connessione", "ora sei connesso");
-        } 
+        }
       });
     });
 
@@ -342,6 +343,21 @@ class _MyHomePageState extends State<MyHomePage> {
 
     socket.emit('list-users');
     _loggati();
+  }
+
+  //builda la preview dei messaggi
+  Widget _previewBuilder(index) {
+    var preview = (_messaggi.where((message) {
+      return message.author.id == authors[index]['uid'];
+    }));
+    if(preview.isNotEmpty){
+      return Text((_messaggi.where((message) {
+      return message.author.id == authors[index]['uid'];
+    }).last as types.TextMessage)
+        .text);
+    }else{
+      return Text('');
+    }    
   }
 
   //metodo per la creazione dinamica del body in base allo stato
@@ -382,13 +398,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 leading: CircleAvatar(
                     foregroundImage: NetworkImage(authors[index]['photoURL'])),
                 title: Text(authors[index]['displayName']),
-                subtitle: Text((_messaggi.where((message) {
-                  return message.author.id == authors[index]['uid'];
-                }).last as types.TextMessage).text),
+                subtitle: _previewBuilder(index),
                 onTap: () => {
                   setState(() {
                     idUserInChat = authors[index]['uid'];
-                    //_loadMessagesDynamic();
                     appStatus = Status.inChat;
                   })
                 },
@@ -434,6 +447,17 @@ class _MyHomePageState extends State<MyHomePage> {
       child: ListView(
         children: [
           ListTile(
+            title: const Text('Back to menu'),
+            onTap: () {
+              setState(() {
+                if (appStatus == Status.inChat) {
+                  appStatus = Status.menu;
+                  Navigator.pop(context);
+                }
+              });
+            },
+          ),
+          ListTile(
             title: const Text('Back to login'),
             onTap: () {
               setState(() {
@@ -443,12 +467,12 @@ class _MyHomePageState extends State<MyHomePage> {
               });
             },
           ),
-          ListTile(
-            title: const Text('List all users'),
-            onTap: () {
-              socket.emit('list-users', {});
-            },
-          ),
+          // ListTile(
+          //   title: const Text('List all users'),
+          //   onTap: () {
+          //     socket.emit('list-users', {});
+          //   },
+          // ),
           ListTile(
             title: const Text('Back to ip assigning'),
             onTap: () {
@@ -461,17 +485,7 @@ class _MyHomePageState extends State<MyHomePage> {
             },
           ),
           ListTile(
-            title: const Text('Back to menu'),
-            onTap: () {
-              setState(() {
-                if (appStatus == Status.inChat) {
-                  appStatus = Status.menu;
-                }
-              });
-            },
-          ),
-          ListTile(
-            title: const Text('help'),
+            title: const Text('Help'),
             onTap: () {
               setState(() {
                 _showAlert(context, "How does it work?",
