@@ -358,8 +358,9 @@ class _MyHomePageState extends State<MyHomePage> {
       return (message.author.id == tempAuthors[index]['uid'] && message.roomId == _user.id) ||
               (message.roomId == tempAuthors[index]['uid'] && message.author.id == _user.id);
     }));
+    var time = DateTime.fromMillisecondsSinceEpoch(preview.first.createdAt!);
     if (preview.isNotEmpty) {
-      return Text((preview.first as types.TextMessage).text);
+      return Text("${(preview.first as types.TextMessage).text}   ${time.hour}:${time.minute.toString().length < 2 ? "0${time.minute}" : time.minute}");
     } else {
       return Text('');
     }
