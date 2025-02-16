@@ -75,8 +75,11 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController txtController = TextEditingController();
   late String serverIp;
 
-  //lista di autori totali, da togliere una volta fatto fetch google TODO
+  //lista totale di autori fetchati da firebase
   List<dynamic> authors = [];
+
+  //lista utenti che non sono quello corrente
+  List<dynamic> tempAuthors = [];
 
   //lista messaggi di appoggio json
   List<types.Message> _messaggi = [];
@@ -138,12 +141,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
       User? user = userCredential.user;
       _user = types.User(id: user!.uid, firstName: user.displayName);
-      if (/*user != null USELESS*/ true) {
-        setState(() {
-          //cambio lo status dell'app, esco da login
-          appStatus = Status.menu;
-        });
-      }
+
+      tempAuthors = authors.where((user) {
+        return user['uid'] != _user.id;
+      }).toList();
+      
+      setState(() {
+        //cambio lo status dell'app, esco da login
+        appStatus = Status.menu;
+      });
     } catch (e) {
       if (mounted) {
         //ipotetico errore
@@ -317,11 +323,9 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
 
-    socket.on(
-        'users',
-        (data) => {
-              authors = data,
-            });
+    socket.on('users', (data) {
+      authors = data;
+    });
 
     socket.on('message', (data) {
       setState(() {
@@ -351,13 +355,10 @@ class _MyHomePageState extends State<MyHomePage> {
   //builda la preview dei messaggi
   Widget _previewBuilder(index) {
     var preview = (_messaggi.where((message) {
-      return message.author.id == authors[index]['uid'];
+      return message.author.id == tempAuthors[index]['uid'];
     }));
     if (preview.isNotEmpty) {
-      return Text((_messaggi.where((message) {
-        return message.author.id == authors[index]['uid'];
-      }).last as types.TextMessage)
-          .text);
+      return Text((preview.first as types.TextMessage).text);
     } else {
       return Text('');
     }
@@ -394,22 +395,20 @@ class _MyHomePageState extends State<MyHomePage> {
       //caso del menu
       case Status.menu:
         return ListView.builder(
-          itemCount: authors.length,
+          itemCount: tempAuthors.length,
           itemBuilder: (context, index) {
-            if (authors[index]['uid'] != _user.id) {
-              return ListTile(
-                leading: CircleAvatar(
-                    foregroundImage: NetworkImage(authors[index]['photoURL'])),
-                title: Text(authors[index]['displayName']),
-                subtitle: _previewBuilder(index),
-                onTap: () => {
-                  setState(() {
-                    idUserInChat = authors[index]['uid'];
-                    appStatus = Status.inChat;
-                  })
-                },
-              );
-            }
+            return ListTile(
+              leading: CircleAvatar(
+                  foregroundImage: NetworkImage(tempAuthors[index]['photoURL'])),
+              title: Text(tempAuthors[index]['displayName']),
+              subtitle: _previewBuilder(index),
+              onTap: () => {
+                setState(() {
+                  idUserInChat = tempAuthors[index]['uid'];
+                  appStatus = Status.inChat;
+                })
+              },
+            );
           },
         );
 
@@ -494,14 +493,15 @@ class _MyHomePageState extends State<MyHomePage> {
           style: GoogleFonts.montserrat(),
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        leading: appStatus == Status.inChat ? IconButton(
-            onPressed: () {
-              setState(() {
-                appStatus = Status.menu;
-              });
-            },
-            icon: Icon(Icons.arrow_back)) : null
-            );
+        leading: appStatus == Status.inChat
+            ? IconButton(
+                onPressed: () {
+                  setState(() {
+                    appStatus = Status.menu;
+                  });
+                },
+                icon: Icon(Icons.arrow_back))
+            : null);
   }
 
   //effettiva app, piccola perché il body è nel metodo
