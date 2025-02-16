@@ -203,7 +203,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _loadMessagesDynamic() {
     return _messaggi.where((message) {
-      return message.author.id == idUserInChat ||
+      return (message.author.id == idUserInChat && message.roomId == _user.id) ||
           (message.roomId == idUserInChat && message.author.id == _user.id);
     }).toList();
   }
@@ -355,7 +355,8 @@ class _MyHomePageState extends State<MyHomePage> {
   //builda la preview dei messaggi
   Widget _previewBuilder(index) {
     var preview = (_messaggi.where((message) {
-      return message.author.id == tempAuthors[index]['uid'];
+      return (message.author.id == tempAuthors[index]['uid'] && message.roomId == _user.id) ||
+              (message.roomId == tempAuthors[index]['uid'] && message.author.id == _user.id);
     }));
     if (preview.isNotEmpty) {
       return Text((preview.first as types.TextMessage).text);
