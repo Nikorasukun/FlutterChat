@@ -145,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
       tempAuthors = authors.where((user) {
         return user['uid'] != _user.id;
       }).toList();
-      
+
       setState(() {
         //cambio lo status dell'app, esco da login
         appStatus = Status.menu;
@@ -203,7 +203,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<types.Message> _loadMessagesDynamic() {
     return _messaggi.where((message) {
-      return (message.author.id == idUserInChat && message.roomId == _user.id) ||
+      return (message.author.id == idUserInChat &&
+              message.roomId == _user.id) ||
           (message.roomId == idUserInChat && message.author.id == _user.id);
     }).toList();
   }
@@ -354,13 +355,33 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //builda la preview dei messaggi
   Widget _previewBuilder(index) {
-    var preview = (_messaggi.where((message) {
-      return (message.author.id == tempAuthors[index]['uid'] && message.roomId == _user.id) ||
-              (message.roomId == tempAuthors[index]['uid'] && message.author.id == _user.id);
-    }));
-    var time = DateTime.fromMillisecondsSinceEpoch(preview.first.createdAt!);
+    var preview = _messaggi.where((message) {
+      return (message.author.id == tempAuthors[index]['uid'] &&
+              message.roomId == _user.id) ||
+          (message.roomId == tempAuthors[index]['uid'] &&
+              message.author.id == _user.id);
+    }).toList();
+
     if (preview.isNotEmpty) {
-      return Text("${(preview.first as types.TextMessage).text}   ${time.hour}:${time.minute.toString().length < 2 ? "0${time.minute}" : time.minute}");
+      final msg = preview.first as types.TextMessage;
+      final time = DateTime.fromMillisecondsSinceEpoch(msg.createdAt!);
+      final timeString =
+          "${time.hour}:${time.minute.toString().length < 2 ? "0${time.minute}" : time.minute}";
+
+      return Row(
+        children: [
+          // Expanded allows the text to take up available space and be truncated if needed.
+          Expanded(
+            child: Text(
+              msg.text,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey,),
+            ),
+          ),
+          // Time text aligned to the right.
+          Text(timeString, style: TextStyle(color: Colors.grey),),
+        ],
+      );
     } else {
       return Text('');
     }
@@ -401,8 +422,9 @@ class _MyHomePageState extends State<MyHomePage> {
           itemBuilder: (context, index) {
             return ListTile(
               leading: CircleAvatar(
-                  foregroundImage: NetworkImage(tempAuthors[index]['photoURL'])),
-              title: Text(tempAuthors[index]['displayName']),
+                  foregroundImage:
+                      NetworkImage(tempAuthors[index]['photoURL'])),
+              title: Text(tempAuthors[index]['displayName'], style: TextStyle(fontSize: 18),),
               subtitle: _previewBuilder(index),
               onTap: () => {
                 setState(() {
