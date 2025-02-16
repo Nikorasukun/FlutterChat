@@ -20,6 +20,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
+//font personalizzati
+import 'package:google_fonts/google_fonts.dart';
+
 //stati dell'applicazione
 enum Status { ipAssigning, login, menu, inChat }
 
@@ -45,7 +48,7 @@ class SimpleChat extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Chat',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'NM Chat'),
@@ -350,14 +353,14 @@ class _MyHomePageState extends State<MyHomePage> {
     var preview = (_messaggi.where((message) {
       return message.author.id == authors[index]['uid'];
     }));
-    if(preview.isNotEmpty){
+    if (preview.isNotEmpty) {
       return Text((_messaggi.where((message) {
-      return message.author.id == authors[index]['uid'];
-    }).last as types.TextMessage)
-        .text);
-    }else{
+        return message.author.id == authors[index]['uid'];
+      }).last as types.TextMessage)
+          .text);
+    } else {
       return Text('');
-    }    
+    }
   }
 
   //metodo per la creazione dinamica del body in base allo stato
@@ -431,59 +434,44 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-/*
-  void populateAuthors() {
-    for (int i = 0; i < _messaggi.length; i++) {
-      if (!authors
-          .any((currentUser) => _messaggi[i].author.id == currentUser.id)) {
-        authors.add(_messaggi[i].author);
-      }
-    }
-  }
-*/
-
+  //metodo per buildare dinamicamente il drawer
   Drawer _buildDrawer() {
     return Drawer(
       child: ListView(
         children: [
-          ListTile(
-            title: const Text('Back to menu'),
-            onTap: () {
-              setState(() {
-                if (appStatus == Status.inChat) {
+          if (appStatus == Status.inChat)
+            ListTile(
+              title: const Text('Back to menu'),
+              onTap: () {
+                setState(() {
                   appStatus = Status.menu;
                   Navigator.pop(context);
-                }
-              });
-            },
-          ),
-          ListTile(
-            title: const Text('Back to login'),
-            onTap: () {
-              setState(() {
-                if (appStatus == Status.inChat) {
+                });
+              },
+            ),
+          if (appStatus == Status.inChat || appStatus == Status.menu)
+            ListTile(
+              title: const Text('Back to login'),
+              onTap: () {
+                setState(() {
                   _logout();
-                }
-              });
-            },
-          ),
-          // ListTile(
-          //   title: const Text('List all users'),
-          //   onTap: () {
-          //     socket.emit('list-users', {});
-          //   },
-          // ),
-          ListTile(
-            title: const Text('Back to ip assigning'),
-            onTap: () {
-              setState(() {
-                if (appStatus == Status.login || appStatus == Status.inChat) {
+                  Navigator.pop(context);
+                });
+              },
+            ),
+          if (appStatus == Status.inChat ||
+              appStatus == Status.menu ||
+              appStatus == Status.login)
+            ListTile(
+              title: const Text('Back to ip assigning'),
+              onTap: () {
+                setState(() {
                   appStatus = Status.ipAssigning;
                   txtController.text = "";
-                }
-              });
-            },
-          ),
+                  Navigator.pop(context);
+                });
+              },
+            ),
           ListTile(
             title: const Text('Help'),
             onTap: () {
@@ -498,11 +486,22 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  //metodo per buildare dinamicamente la appbar
   PreferredSizeWidget? _buildAppBar() {
     return AppBar(
-      title: Text(widget.title),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-    );
+        title: Text(
+          widget.title,
+          style: GoogleFonts.montserrat(),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        leading: appStatus == Status.inChat ? IconButton(
+            onPressed: () {
+              setState(() {
+                appStatus = Status.menu;
+              });
+            },
+            icon: Icon(Icons.arrow_back)) : null
+            );
   }
 
   //effettiva app, piccola perché il body è nel metodo
